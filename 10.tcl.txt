@@ -1,0 +1,110 @@
+# Create a new ns-2 simulator object
+set ns [new Simulator]
+
+# Define the number of nodes and inter-node spacing
+set num_nodes 10
+set node_spacing 150
+
+# Create an array to hold the nodes
+for {set i 0} {$i < $num_nodes} {incr i} {
+    set nodes($i) [$ns node]
+    $nodes($i) set X [expr $i * $node_spacing]
+    $nodes($i) set Y 0
+}
+
+# Set up duplex links between nodes
+for {set i 0} {$i < $num_nodes-1} {incr i} {
+    set link($i) [$ns duplex-link $nodes($i) $nodes($i+1) 100Mbps 10ms DropTail]
+    $link($i) queue-limit 50
+}
+
+# Set up a TCP connection and FTP application for each scenario
+
+# Scenario 1: Communication from the first node to the last node
+set src_node 0
+set dest_node [expr $num_nodes - 1]
+set rate 4
+set packet_size 1460
+set window_sizes {4 8 32}
+
+for {set i 0} {$i < [llength $window_sizes]} {incr i} {
+    set win_size [lindex $window_sizes $i]
+    set tcp1($i) [new Agent/TCP]
+    $ns attach-agent $nodes($src_node) $tcp1($i)
+    set ftp1($i) [new Application/FTP]
+    $ftp1($i) attach-agent $tcp1($i)
+    $ftp1($i) set type_ FTP
+    $ftp1($i) set rate_ $rate
+    $ftp1($i) set packet_size_ $packet_size
+    $tcp1($i) set window_ $win_size
+    $ns connect $tcp1($i) $nodes($dest_node)
+}
+
+# Scenario 2: Communication from a node to its neighboring node
+set src_node 3  ;# For example, communication from node 3 to 4
+set dest_node [expr $src_node + 1]
+
+set tcp2 [new Agent/TCP]
+$ns attach-agent $nodes($src_node) $tcp2
+set ftp2 [new Application/FTP]
+$ftp2 attach-agent $tcp2
+$ftp2 set type_ FTP
+$ftp2 set rate_ $rate
+$ftp2 set packet_size_ $packet_size
+$tcp2 set window_ 8
+$ns connect $tcp2 $nodes($dest_node)
+
+# Scenario 3: Simultaneous communications between the first node to ith node and jth node to the last node
+set i 3 ;# For example, i = 3
+set j 7 ;# For example, j = 7
+
+set tcp3_src [new Agent/TCP]
+$ns attach-agent $nodes(0) $tcp3_src
+set ftp3_src [new Application/FTP]
+$ftp3_src attach-agent $tcp3_src
+$ftp3_src set type_ FTP
+$ftp3_src set rate_ $rate
+$ftp3_src set packet_size_ $packet_size
+$tcp3_src set window_ 8
+$ns connect $tcp3_src $nodes($i)
+
+set tcp3_dest [new Agent/TCP]
+$ns attach-agent $nodes($j) $tcp3_dest
+set ftp3_dest [new Application/FTP]
+$ftp3_dest attach-agent $tcp3_dest
+$ftp3_dest set type_ FTP
+$ftp3_dest set rate_ $rate
+$ftp3_dest set packet_size_ $packet_size
+$tcp3_dest set window_ 8
+$ns connect $tcp3_dest $nodes($num_nodes-1)
+
+# Scenario 4: Simultaneous communications from node i to j and node k to j-1
+set i 5 ;# For example, i = 5
+set j 8 ;# For example, j = 8
+set k 2 ;# For example, k = 2
+
+set tcp4_1 [new Agent/TCP]
+$ns attach-agent $nodes($i) $tcp4_1
+set ftp4_1 [new Application/FTP]
+$ftp4_1 attach-agent $tcp4_1
+$ftp4_1 set type_ FTP
+$ftp4_1 set rate_ $rate
+$ftp4_1 set packet_size_ $packet_size
+$tcp4_1 set window_ 8
+$ns connect $tcp4_1 $nodes($j)
+
+set tcp4_2 [new Agent/TCP]
+$ns attach-agent $nodes($k) $tcp4_2
+set ftp4_2 [new Application/FTP]
+$ftp4_2 attach-agent $tcp4_2
+$ftp4_2 set type_ FTP
+$ftp4_2 set rate_ $rate
+$ftp4_2 set packet_size_ $packet_size
+$tcp4_2 set window_ 8
+$ns connect $tcp4_2 $nodes($j-1)
+
+# Set simulation end time to 60 seconds
+$ns at 60.0 "$ns halt"
+
+# Run the simulation
+$ns run
