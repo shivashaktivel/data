@@ -1,0 +1,74 @@
+#include<stdio.h>
+#include<sys/types.h>
+#include<netinet/in.h>
+#include<sys/socket.h>
+#include<string.h>
+#include<unistd.h>
+int main()
+{
+        int sockdesc;
+        struct sockaddr_in raddr,cliaddr;
+
+        sockdesc=socket(AF_INET,SOCK_DGRAM,0);
+        if(sockdesc==-1)
+        {
+                printf("Socket not created");
+                return -1;
+        }
+
+        raddr.sin_family=AF_INET;
+        raddr.sin_port=htons(4327);                  // PORT number ranges from 1024 to 49151
+        raddr.sin_addr.s_addr=htonl(INADDR_ANY);
+
+        //serv1addr.sin_family=AF_INET;
+        //serv1addr.sin_port=htons(12345);                  // PORT number ranges from 1024 to 49151
+        //serv1addr.sin_addr.s_addr=htonl(INADDR_ANY);
+
+        //serv2addr.sin_family=AF_INET;
+        //serv2addr.sin_port=htons(12346);                  // PORT number ranges from 1024 to 49151
+        //erv2addr.sin_addr.s_addr=htonl(INADDR_ANY);
+
+        if(bind(sockdesc,(struct sockaddr *)&raddr,sizeof(raddr)) < 0)
+        {
+                printf("Bind Failed");
+                return -1;
+        }
+
+        int len=sizeof(cliaddr);
+        printf("Waiting for a request...\n");
+        char input[30]="";
+        strcpy(input," ");
+        //char n[10];
+        int output[1]={0};
+        //char space=' ';
+        recvfrom(sockdesc,input,sizeof(input),0,(struct sockaddr *)&cliaddr,&len);
+        if (strcmp(input,".edu")==0)
+        {
+                //printf("Enter the no.of inputs-");
+                //scanf("%s",&n);
+                //scanf("%c",&space);
+                char tport[5]= "4347";
+                //int num=atoi(tport);
+                printf("the port number of .edu TOP level DNS server is 12347\n");
+                //cliaddr.sin_port=htons(2337);
+                sendto(sockdesc,tport,sizeof(tport),0,(struct sockaddr *)&cliaddr,sizeof(cliaddr));
+                //recvfrom(sockdesc,output,sizeof(output),0,(struct sockaddr *)&serv1addr,sizeof(serv1addr));
+
+        }
+
+        /*if (strcmp(input,"SUB")==0)
+        {i
+                sendto(sockdesc,input,strlen(input),0,(struct sockaddr *)&serv2addr,sizeof(serv2addr));
+                recvfrom(sockdesc,output,sizeof(output),0,(struct sockaddr *)&serv2addr,sizeof(serv2addr));
+                printf("%d-the output is",output[0]);
+        }*/
+
+
+        //sendto(sockdesc,output,sizeof(output),0,(struct sockaddr *)&cliaddr,sizeof(cliaddr));
+
+        close(sockdesc);
+
+
+
+        return 0;
+}

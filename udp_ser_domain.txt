@@ -1,0 +1,71 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <arpa/inet.h>
+
+#define PORT 12345
+#define MAX_BUFFER_SIZE 1024
+
+// Define a lookup table for domain names and IP addresses
+struct LookupEntry {
+    char domain[50];
+    char ip[20];
+};
+
+struct LookupEntry lookupTable[] = {
+    {"vit.ac.in", "192.168.1.1"},
+    {"google.com", "172.217.19.142"},
+    {"ieee.org", "208.97.177.161"},
+    {"annauniv.edu", "144.16.194.90"},
+    {"yahoo.co.in", "98.137.11.163"},
+};
+
+int main() {
+    int sockfd;
+    struct sockaddr_in serverAddr, clientAddr;
+    socklen_t addr_size;
+    char buffer[MAX_BUFFER_SIZE];
+
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0) {
+        perror("Error in socket");
+        exit(1);
+    }
+
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(PORT);
+    serverAddr.sin_addr.s_addr = INADDR_ANY;
+
+    if (bind(sockfd, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
+        perror("Error in binding");
+        exit(1);
+    }
+
+    printf("Server is listening on port %d...\n", PORT);
+
+    while (1) {
+        addr_size = sizeof(clientAddr);
+        ssize_t dataSize = recvfrom(sockfd, buffer, MAX_BUFFER_SIZE, 0, (struct sockaddr*)&clientAddr, &addr_size);
+        buffer[dataSize] = '\0';
+
+        // Look up the IP address in the table
+        char* domainName = buffer;
+        char* foundIP = NULL;
+        for (int i = 0; i < sizeof(lookupTable) / sizeof(lookupTable[0]); i++) {
+            if (strcmp(lookupTable[i].domain, domainName) == 0) {
+                foundIP = lookupTable[i].ip;
+                break;
+            }
+        }
+
+        if (foundIP != NULL) {
+            printf("Lookup request for domain: %s, IP address: %s\n", domainName, foundIP);
+            sendto(sockfd, foundIP, strlen(foundIP), 0, (struct sockaddr*)&clientAddr, addr_size);
+        } else {
+            printf("Domain not found: %s\n", domainName);
+            sendto(sockfd, "Not found", 9, 0, (struct sockaddr*)&clientAddr, addr_size);
+        }
+    }
+
+    return 0;
+}

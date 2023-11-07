@@ -1,0 +1,101 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <arpa/inet.h>
+#include <ctype.h>
+#include <unistd.h>
+
+#define PORT 54321
+#define MAX_BUFFER_SIZE 1024
+
+int isPalindrome(char *str) {
+    int len = strlen(str);
+    for (int i = 0; i < len / 2; i++) {
+        if (str[i] != str[len - i - 1]) {
+            return 0; // Not a palindrome
+        }
+    }
+    return 1; // Palindrome
+}
+
+int isEvenOrOdd(int num) {
+    return num % 2 == 0;
+}
+
+void countZerosAndOnes(char *str, int *zeros, int *ones) {
+    *zeros = 0;
+    *ones = 0;
+    for (int i = 0; str[i] != '\0'; i++) {
+        if (str[i] == '0') {
+            (*zeros)++;
+        } else if (str[i] == '1') {
+            (*ones)++;
+        }
+    }
+}
+
+int main() {
+    int sockfd;
+    struct sockaddr_in serverAddr, clientAddr;
+    socklen_t addr_size;
+    char buffer[MAX_BUFFER_SIZE];
+    ssize_t dataSize;
+
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0) {
+        perror("Error in socket");
+        exit(1);
+    }
+
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(PORT);
+    serverAddr.sin_addr.s_addr = INADDR_ANY;
+
+    if (bind(sockfd, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
+        perror("Error in binding");
+        exit(1);
+    }
+
+    printf("Server is listening on port %d...\n", PORT);
+
+    while (1) {
+        addr_size = sizeof(clientAddr);
+        dataSize = recvfrom(sockfd, buffer, MAX_BUFFER_SIZE, 0, (struct sockaddr *)&clientAddr, &addr_size);
+        buffer[dataSize] = '\0';
+
+        if (strncmp(buffer, "PALINDROME", 10) == 0) {
+            sendto(sockfd, "Enter a word to check for palindrome:", 37, 0, (struct sockaddr *)&clientAddr, addr_size);
+            dataSize = recvfrom(sockfd, buffer, MAX_BUFFER_SIZE, 0, (struct sockaddr *)&clientAddr, &addr_size);
+            buffer[dataSize] = '\0';
+            if (isPalindrome(buffer)) {
+                sendto(sockfd, "Palindrome", 10, 0, (struct sockaddr *)&clientAddr, addr_size);
+            } else {
+                sendto(sockfd, "Not palindrome", 13, 0, (struct sockaddr *)&clientAddr, addr_size);
+            }
+        } else if (strncmp(buffer, "EVENODD", 7) == 0) {
+            sendto(sockfd, "Enter a number to check for even/odd:", 37, 0, (struct sockaddr *)&clientAddr, addr_size);
+            dataSize = recvfrom(sockfd, buffer, MAX_BUFFER_SIZE, 0, (struct sockaddr *)&clientAddr, &addr_size);
+            buffer[dataSize] = '\0';
+            int num = atoi(buffer);
+            if (isEvenOrOdd(num)) {
+                sendto(sockfd, "Even number", 12, 0, (struct sockaddr *)&clientAddr, addr_size);
+            } else {
+                sendto(sockfd, "Odd number", 11, 0, (struct sockaddr *)&clientAddr, addr_size);
+            }
+        } else if (strncmp(buffer, "NUM01", 5) == 0) {
+            sendto(sockfd, "Enter a string to count 0s and 1s:", 36, 0, (struct sockaddr *)&clientAddr, addr_size);
+            dataSize = recvfrom(sockfd, buffer, MAX_BUFFER_SIZE, 0, (struct sockaddr *)&clientAddr, &addr_size);
+            buffer[dataSize] = '\0';
+            int zeros, ones;
+            countZerosAndOnes(buffer, &zeros, &ones);
+            char response[MAX_BUFFER_SIZE];
+            snprintf(response, MAX_BUFFER_SIZE, "%d %d", zeros, ones);
+            sendto(sockfd, response, strlen(response), 0, (struct sockaddr *)&clientAddr, addr_size);
+        } else {
+            sendto(sockfd, "Invalid Command", 15, 0, (struct sockaddr *)&clientAddr, addr_size);
+        }
+    }
+
+    close(sockfd);
+    return 0;
+}
