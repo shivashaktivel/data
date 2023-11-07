@@ -1,0 +1,83 @@
+#include<stdio.h>
+#include<sys/types.h>
+#include<netinet/in.h>
+#include<sys/socket.h>
+#include<string.h>
+#include<unistd.h>
+
+struct DNScache{
+
+        char domain[50];
+        char ip[50];
+}cache[2];
+int main()
+{
+        int flag=0;
+        int curr=0;
+        int sockdesc;
+        struct sockaddr_in servaddr,cliaddr,authaddr;
+
+        sockdesc=socket(AF_INET,SOCK_DGRAM,0);
+        if(sockdesc==-1)
+        {
+                printf("Socket not created");
+                return -1;
+        }
+
+        servaddr.sin_family=AF_INET;
+        servaddr.sin_port=htons(40011);
+        servaddr.sin_addr.s_addr=htonl(INADDR_ANY);
+
+        authaddr.sin_family=AF_INET;
+        authaddr.sin_port=htons(30000);
+        authaddr.sin_addr.s_addr=htonl(INADDR_ANY);
+        if(bind(sockdesc,(struct sockaddr *)&servaddr,sizeof(servaddr)) < 0)
+        {
+                printf("Bind Failed");
+                return -1;
+        }
+
+        //char *dom[5] = {"vit.ac.in", "google.com", "ieee.org", "annauniv.edu", "yahoo.co.in"};
+        //char *ip[5] = {"172.178.1.209", "100.100.1.100", "123.456.7.890", "172.168.1.200", "174.123.1.300"};
+        while(1)
+        {
+                int len=sizeof(cliaddr);
+                int len2=sizeof(authaddr);
+
+                printf("Waiting for a request...\n");
+                char buffer[50] = "";
+                char ip[50]="";
+                recvfrom(sockdesc,buffer,sizeof(buffer),0,(struct sockaddr *)&cliaddr,&len);
+                printf("Message received from client: %s\n", buffer);
+                int exist=0;
+                if (flag==1)
+                {
+                        for(int j=0;j<2;j++)
+                        {
+                                if(strcmp(buffer,cache[j].domain)==0)
+                                {
+                                        strcpy(ip,cache[j].ip);
+                                        exist=1;
+                                }
+                        }
+
+
+                }
+                if (exist==0){
+                        sendto(sockdesc,buffer,sizeof(buffer),0,(struct sockaddr *)&authaddr,sizeof(authaddr));
+                        recvfrom(sockdesc,ip,sizeof(ip),0,(struct sockaddr *)&authaddr,&len2);
+                        strcpy(cache[curr].domain,buffer);
+                        strcpy(cache[curr].ip,ip);
+                        curr=(curr+1)%2;
+                        flag=1;
+                }
+                printf("output: %s\n\n", ip);
+                sendto(sockdesc,ip,strlen(ip),0,(struct sockaddr *)&cliaddr,sizeof(cliaddr));
+        }
+
+        close(sockdesc);
+
+
+
+        return 0;
+}
